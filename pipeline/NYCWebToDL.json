@@ -1,0 +1,155 @@
+{
+	"name": "NYCWebToDL",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEach",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@range(pipeline().parameters.p_from_month,pipeline().parameters.p_till_month)",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Copy NYC Data",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "ParquetSource",
+									"storeSettings": {
+										"type": "HttpReadSettings",
+										"requestMethod": "GET"
+									},
+									"formatSettings": {
+										"type": "ParquetReadSettings"
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "nyc_dataset_src",
+									"type": "DatasetReference",
+									"parameters": {
+										"p_month": {
+											"value": "@if(less(item(), 10), concat('0', string(item())), string(item()))",
+											"type": "Expression"
+										},
+										"p_year": {
+											"value": "@pipeline().parameters.p_year",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "nyc_raw_sink",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Silver Notebook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "ForEach",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/vivekbhand09@gmail.com/NYC-TAXI/Silver_Notebook"
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_Databricks",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Gold Notebook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Silver Notebook",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Users/vivekbhand09@gmail.com/NYC-TAXI/gold_notebook"
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_Databricks",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"p_year": {
+				"type": "string"
+			},
+			"p_till_month": {
+				"type": "int"
+			},
+			"p_from_month": {
+				"type": "int"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-10-30T18:50:11Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

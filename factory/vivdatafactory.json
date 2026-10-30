@@ -1,0 +1,15 @@
+{
+	"name": "vivdatafactory",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "afc60f10-ed0e-43a6-b9c7-8595eebcf292",
+		"tenantId": "9a2a7bfd-b9c8-4de7-9612-d0900ee6258b"
+	}
+}
