@@ -433,6 +433,8 @@ gold/trip_zone/
 3. In Power BI Desktop: **Get data → Azure Databricks**, supplying the warehouse's **server hostname** and **HTTP path**
 4. Loaded `main.gold.trip_zone`, `trip_type` and `trip_trip`
 
+![Project Screenshot](Utils/powerbi.png)
+
 | Storage mode | Behaviour | Fit |
 |---|---|---|
 | **Import** | Data cached in the in-memory engine | Fast visuals, scheduled refresh |
