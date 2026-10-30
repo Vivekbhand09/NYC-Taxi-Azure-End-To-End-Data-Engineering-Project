@@ -31,6 +31,8 @@ NYC's Taxi & Limousine Commission publishes millions of trip records every month
 4. 📊 **Serve** a star-schema model to Power BI for revenue, trip and borough analytics
 5. 🤖 **Orchestrate** the whole flow, ingestion through transformation, from a single Azure Data Factory pipeline
 
+
+
 ### 📂 Data sources
 
 | Dataset | Format | Role | Loaded by |
@@ -81,6 +83,7 @@ flowchart LR
     S[🔐 Entra ID<br/>Service Principal + RBAC] -.OAuth.-> DBX
     S -.authorises.-> LAKE
 ```
+![Project Screenshot](Utils/overview.png)
 
 ### 🧩 Component responsibilities
 
@@ -184,9 +187,15 @@ p_month      : @if(less(item(),10), concat('0',string(item())), string(item()))
 - The `p_month` expression zero-pads single-digit months, because the source file names use `01` … `12`.
 - Running `p_year=2026, p_from_month=1, p_till_month=9` produces **nine Copy runs** and nine Parquet files in `bronze/NYCData/`.
 
+![Project Screenshot](Utils/foreach.png)
+
+![Project Screenshot](Utils/bronze.png)
+
 ### 2.4 Orchestrating Databricks from ADF
 
 To make the pipeline truly end-to-end, I connected ADF to Databricks and chained my notebooks behind the ingestion step.
+
+![Project Screenshot](Utils/pipeline.png)
 
 **Linked service `LS_Datalake` (Azure Databricks)**
 
@@ -255,6 +264,8 @@ display(dbutils.fs.ls("abfss://bronze@nyctaxistorageviv.dfs.core.windows.net/"))
 ## 🥈 Phase 4: Silver Layer, Cleansing and Enrichment
 
 The `silver` notebook reads Bronze, standardises it and writes cleansed Parquet.
+
+![Project Screenshot](Utils/cluster.png)
 
 ### 4.1 Reading
 
@@ -326,6 +337,10 @@ df_trip.write.format("parquet").mode("overwrite") \
 
 Silver output: `silver/trip_type`, `silver/trip_zone`, `silver/NYCData`, all as cleansed Parquet.
 
+![Project Screenshot](Utils/succeededrun.png)
+
+![Project Screenshot](Utils/silver.png)
+
 ---
 
 ## 🥇 Phase 5: Gold Layer, Delta Lake and Unity Catalog
@@ -355,6 +370,8 @@ gold   = "abfss://gold@nyctaxistorageviv.dfs.core.windows.net"
 ```
 
 `saveAsTable` registers each table in the catalog, so it is immediately queryable by name from SQL, notebooks and BI tools.
+
+![Project Screenshot](Utils/gold.png)
 
 ### 5.3 Managed vs external tables
 
@@ -452,6 +469,8 @@ Total Trips     = COUNTROWS ( trip_trip )
 ```
 
 ### 6.4 Dashboard: *NYC Taxi Trips Analysis*
+
+![Project Screenshot](Utils/dashboard.png)
 
 | Visual | Fields | Insight |
 |---|---|---|
