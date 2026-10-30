@@ -1,5 +1,3 @@
-<div align="center">
-
 # 🚕 NYC Taxi Trips: End-to-End Azure Lakehouse Platform
 
 ### From a public web source to an executive dashboard, fully orchestrated, secured and governed.
@@ -20,8 +18,6 @@
 ![DAX](https://img.shields.io/badge/🧠_DAX-F2C811?style=for-the-badge&logo=powerbi&logoColor=black)
 ![Medallion](https://img.shields.io/badge/🥉🥈🥇_Medallion-8A2BE2?style=for-the-badge)
 ![Git](https://img.shields.io/badge/🌿_GitHub-181717?style=for-the-badge&logo=github&logoColor=white)
-
-</div>
 
 ---
 
