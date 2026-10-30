@@ -512,36 +512,91 @@ Overwrite semantics per layer, or <code>MERGE INTO</code> on a business key for 
 </details>
 
 ---
+## 🎓 What I Learned
 
-## 🚀 Roadmap
+### 🏗️ Architecture and design thinking
+- Designed a **medallion lakehouse** (Bronze → Silver → Gold) and learned why each layer exists: Bronze is an immutable system of record, Silver is the engineering layer, and Gold is the contract with consumers.
+- Understood the **ELT** pattern: land raw data first, then transform inside scalable compute, which keeps reprocessing cheap whenever business logic changes.
+- Chose the **right storage format per layer**: Parquet for efficient columnar storage upstream, **Delta** at Gold where ACID guarantees, updates and history are required.
+- Learned the difference between a **data lake, a data warehouse and a lakehouse**, and why ADLS Gen2 + Delta + Databricks delivers warehouse-like reliability on lake-like economics.
+- Learned why **ADLS Gen2's hierarchical namespace** matters: real directories, atomic folder operations, ACLs and native Spark access through `abfss://`.
 
-- ⏰ Schedule trigger for monthly, hands-free incremental runs
-- 🔄 `MERGE`-based upserts and Auto Loader ingestion
-- ✅ Data-quality gates (Delta `CHECK` constraints / Lakeflow expectations)
-- ⚙️ Date partitioning with `OPTIMIZE` + `ZORDER`
-- 🔑 Key Vault-backed secret scope, Managed Identity, Unity Catalog external locations
-- 🧪 CI/CD with Git-integrated ADF and Databricks Repos via GitHub Actions
-- 📡 Monitoring and alerting through Azure Monitor and ADF alerts
+### 🏭 Azure Data Factory
+- Mastered the ADF object model: **linked services** (connections), **datasets** (data pointers), **activities**, **pipelines**, **parameters**, **integration runtimes** and **triggers**.
+- Built a **fully parameterised pipeline** where dataset parameters and pipeline parameters drive the source URL, so one pipeline serves any year and month range.
+- Used **ADF expression language** (`range`, `if`, `less`, `concat`, `string`, `add`, `sub`, `item()`) and learned that `range(start, count)` takes a *count*, so the end value is computed as `till − from + 1`.
+- Understood **sequential vs parallel ForEach** and chose sequential to be gentle on the public source and keep runs deterministic.
+- Connected ADF to Databricks with an **Azure Databricks linked service** (`LS_Datalake`) using an existing interactive cluster and an access token, then chained **Notebook activities** so Silver and Gold run automatically after ingestion.
+- Used **activity dependencies** (on success) to enforce ordering and make the pipeline fail safely instead of producing half-built layers.
+- Learned **Git integration for ADF**: pipelines, datasets and linked services are versioned as JSON, which is what makes the factory reviewable and reproducible.
+
+### 🔐 Security and identity
+- Implemented **service-to-service authentication** with a Microsoft Entra ID app registration and service principal instead of storage account keys.
+- Understood the **control plane vs data plane** split: subscription-level roles manage resources, while reading and writing data needs a **Storage Blob Data** role.
+- Applied **RBAC with least privilege**, granting *Storage Blob Data Contributor* only at the storage account scope.
+- Learned the **OAuth client-credentials flow** end to end: client ID + tenant ID + secret → token from Entra ID → token presented to storage → RBAC decides.
+- Kept secrets out of code with a **Databricks secret scope** and `dbutils.secrets.get`, and compared service principal, managed identity, SAS and account key for the right trade-offs.
+
+### ⚡ PySpark and Databricks
+- Understood **Spark's distributed model**: partitions, DataFrames, **lazy evaluation**, transformations vs actions, and how the DAG is optimised before execution.
+- Defined **explicit schemas** (DDL strings) for the large fact data to avoid inference scans and guarantee consistent types across monthly files.
+- Used **`recursiveFileLookup`** to load every monthly file into one DataFrame without writing file-listing logic.
+- Practised core transformations: `withColumn`, `withColumnRenamed`, `select`, `to_date`, `year`, `month`, and **regex-based `split()`** with safe element access using `get()`.
+- Learned `split()` internals: regex delimiters, the `limit` argument, 0-based vs 1-based indexing (`[]` vs `element_at`), escaping special characters, and NULL handling.
+- Learned **write modes** (`append`, `overwrite`, `ignore`, `errorifexists`) and how they affect repeatability and idempotency.
+- Configured **OAuth access to ADLS Gen2** from Spark with `spark.conf.set` and validated it with `dbutils.fs.ls`.
+
+### 🔺 Delta Lake and Unity Catalog
+- Understood that **Delta = Parquet + a transaction log** (`_delta_log`), with immutable data files and JSON commits recording files added and removed.
+- Demonstrated **UPDATE, DELETE, `DESCRIBE HISTORY`, `RESTORE` and time travel** (`VERSION AS OF`, `TIMESTAMP AS OF`) on a Gold table.
+- Learned the **ACID guarantees** in Delta terms: atomic commits, schema enforcement, optimistic-concurrency isolation, and durable cloud storage.
+- Studied operational features: **MERGE** for idempotent upserts, **OPTIMIZE + ZORDER** for compaction and data skipping, **VACUUM** for retention, and **mergeSchema** for controlled evolution.
+- Learned the **Unity Catalog three-level namespace** (`catalog.schema.table`) and `MANAGED LOCATION` for schema-level storage roots.
+- Understood **managed vs external tables** and why explicit-path external tables fit a medallion layout where containers are the contract between layers.
+
+### 📊 Power BI and data modelling
+- Connected Power BI to a **Databricks SQL Warehouse** using server hostname, HTTP path and a personal access token.
+- Compared **Import vs DirectQuery** and when each is the right choice.
+- Built a **star schema** with a fact table and two dimensions, including an **inactive role-playing relationship** activated with `USERELATIONSHIP()`.
+- Wrote **explicit DAX measures** and learned the difference between calculated columns (stored per row) and measures (computed in filter context at query time).
+- Turned the Gold layer into business insight: revenue by borough, trips by vendor and trip-type distribution.
+
+### 🧭 Engineering practices
+- Learned to build **incrementally**: prove connectivity with a static copy first, then generalise into a parameterised pipeline.
+- Learned to design for **reprocessing and repeatability**, so raw data is always preserved and any layer can be rebuilt.
+- Learned **cost discipline**: auto-terminating clusters, auto-stopping SQL warehouses, and a single resource group as a lifecycle boundary.
+- Learned to **document and version** a data platform so another engineer can understand, rebuild and extend it.
 
 ---
 
-## 🗂️ Suggested Repository Structure
+## 🗂️ Repository Structure
 
 ```
-nyc-taxi-azure-lakehouse/
-├── README.md
-├── adf/                 ← pipeline, dataset and linked-service JSON
-├── notebooks/
-│   ├── silver.py
-│   └── gold.py
-├── powerbi/             ← .pbix and dashboard screenshots
-└── docs/                ← architecture diagram
+azure-end-to-end-data-engineering-nyc-taxi/
+├── README.md              ← project documentation
+├── publish_config.json    ← ADF publish configuration (collaboration branch)
+├── factory/               ← Azure Data Factory instance definition
+├── linkedService/         ← connections: HTTP source, ADLS Gen2, Databricks (LS_Datalake)
+├── dataset/               ← parameterised source and sink datasets
+├── pipeline/              ← NYCWebToDL pipeline (Copy → Silver → Gold)
+└── Utils/                 ← supporting notebooks and helper assets
 ```
+
+| Folder / File | Contents |
+|---|---|
+| `factory/` | Factory-level definition, version-controlled through ADF Git integration |
+| `linkedService/` | JSON for `nyc_web`, `datalakestorage` and `LS_Datalake` |
+| `dataset/` | JSON for `nyc_dataset_src` and `nyc_raw_sink` with their parameters |
+| `pipeline/` | JSON for `NYCWebToDL`: parameters, ForEach, Copy and the Silver/Gold Notebook activities |
+| `publish_config.json` | Tells ADF which branch to publish from |
+| `Utils/` | Silver and Gold notebooks and supporting assets |
+
+> Every ADF component is stored as source-controlled JSON through **ADF Git integration**, so the entire ingestion and orchestration layer is reviewable, diffable and reproducible.
 
 ---
 
 <div align="center">
 
-**Built by Vivek** 🚀 · If this project helped you, drop a ⭐
+**Built by Vivek** Future Data Architect 🚀 ·
 
 </div>
